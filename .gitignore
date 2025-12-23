@@ -1,0 +1,30 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# ===== Virtualenv =====
+.venv/
+venv/
+ENV/
+env/
+
+# ===== PyCharm =====
+.idea/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Logs =====
+*.log
+
+# ===== Qt =====
+*.qmlc
+*.jsc
+
+# ===== Build / dist =====
+build/
+dist/
+*.spec
