@@ -81,13 +81,6 @@ class Sidebar(QWidget):
 
     # ===== API =====
 
-    def create_top_tabs(self) -> QWidget:
-        w = QWidget()
-        self.tabs_layout = QHBoxLayout(w)
-        self.tabs_layout.setContentsMargins(0, 0, 0, 0)
-        self.tabs_layout.setSpacing(10)
-        return w
-
     def _update_tab_group(self, section: str):
         """Оновлює QButtonGroup для поточного розділу"""
         # Очищаємо всі кнопки з групи
@@ -105,6 +98,13 @@ class Sidebar(QWidget):
 
         for i, tab in enumerate(tabs):
             self.tab_group.addButton(tab, i)
+
+    def create_top_tabs(self) -> QWidget:
+        w = QWidget()
+        self.tabs_layout = QHBoxLayout(w)
+        self.tabs_layout.setContentsMargins(0, 0, 0, 0)
+        self.tabs_layout.setSpacing(10)
+        return w
 
     def update_tabs_for_section(self, section: str):
         """Оновлює вкладки для поточного розділу"""

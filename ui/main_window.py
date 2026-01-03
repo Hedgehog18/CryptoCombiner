@@ -9,6 +9,7 @@ from PySide6.QtCore import QSettings
 
 from ui.sidebar import Sidebar
 from ui.pages.dashboard import DashboardPage
+from ui.pages.account_page import AccountPage
 
 
 class MainWindow(QMainWindow):
@@ -57,9 +58,6 @@ class MainWindow(QMainWindow):
         self.tabsbar = self.sidebar.create_top_tabs()
         self.tabsbar.setObjectName("tabsbar")
         right_layout.addWidget(self.tabsbar)
-        
-        # Ініціалізуємо вкладки для початкового розділу
-        self.sidebar.update_tabs_for_section("Огляд")
 
         # ===== STACK =====
         self.section_stack = QStackedWidget()
@@ -75,11 +73,11 @@ class MainWindow(QMainWindow):
         self.trade_pages.addWidget(DashboardPage("Trade: вкладка 2"))
 
         self.settings_pages = QStackedWidget()
-        self.settings_pages.addWidget(DashboardPage("Налаштування: Акаунт"))
+        self.settings_pages.addWidget(AccountPage())
 
         self.section_stack.addWidget(self.overview_pages)    # index 0
-        self.section_stack.addWidget(self.trade_pages)      # index 1
-        self.section_stack.addWidget(self.settings_pages)   # index 2
+        self.section_stack.addWidget(self.trade_pages)       # index 1
+        self.section_stack.addWidget(self.settings_pages)    # index 2
 
         # ===== STATE =====
         self.current_section = "Огляд"
@@ -165,6 +163,9 @@ class MainWindow(QMainWindow):
         self.last_tab_index["Налаштування"] = int(
             self.settings.value("ui/settings_tab", 0)
         )
+
+        # Ініціалізуємо вкладки для початкового розділу
+        self.sidebar.update_tabs_for_section(self.current_section)
 
         self.on_section_changed(self.current_section)
 
