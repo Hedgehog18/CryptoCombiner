@@ -10,6 +10,7 @@ from PySide6.QtCore import QSettings
 from ui.sidebar import Sidebar
 from ui.pages.dashboard import DashboardPage
 from ui.pages.account_page import AccountPage
+from ui.pages.account_overview_page import AccountOverviewPage
 
 
 class MainWindow(QMainWindow):
@@ -64,16 +65,21 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(self.section_stack, 1)
 
         # ===== SECTIONS =====
+        self.account_overview_page = AccountOverviewPage()
         self.overview_pages = QStackedWidget()
-        self.overview_pages.addWidget(DashboardPage("Огляд: вкладка 1"))
+        self.overview_pages.addWidget(self.account_overview_page)
         self.overview_pages.addWidget(DashboardPage("Огляд: вкладка 2"))
 
         self.trade_pages = QStackedWidget()
         self.trade_pages.addWidget(DashboardPage("Trade: вкладка 1"))
         self.trade_pages.addWidget(DashboardPage("Trade: вкладка 2"))
 
+        self.account_page = AccountPage()
         self.settings_pages = QStackedWidget()
-        self.settings_pages.addWidget(AccountPage())
+        self.settings_pages.addWidget(self.account_page)
+        
+        # Підключаємо сигнал зміни акаунту для оновлення балансів
+        self.account_page.account_changed.connect(self._on_account_changed)
 
         self.section_stack.addWidget(self.overview_pages)    # index 0
         self.section_stack.addWidget(self.trade_pages)       # index 1
@@ -181,3 +187,15 @@ class MainWindow(QMainWindow):
         self.settings.setValue("ui/settings_tab", self.last_tab_index["Налаштування"])
 
         super().closeEvent(event)
+
+    def _on_account_changed(self, account: str):
+        """Обробник зміни акаунту за замовчуванням"""
+        # Оновлюємо баланси на сторінці огляду
+        if hasattr(self, 'account_overview_page'):
+            self.account_overview_page._load_account()
+
+    def _on_account_changed(self, account: str):
+        """Обробник зміни акаунту за замовчуванням"""
+        # Оновлюємо баланси на сторінці огляду
+        if hasattr(self, 'account_overview_page'):
+            self.account_overview_page._load_account()

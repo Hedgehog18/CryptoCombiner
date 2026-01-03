@@ -48,7 +48,7 @@ class Sidebar(QWidget):
         self.settings_tabs = []
 
         # Створюємо вкладки для "Огляд"
-        self.overview_tabs.append(self._make_tab_btn("Вкладка 1"))
+        self.overview_tabs.append(self._make_tab_btn("Акаунт"))
         self.overview_tabs.append(self._make_tab_btn("Вкладка 2"))
 
         # Створюємо вкладки для "Trade"
