@@ -150,9 +150,11 @@ class MainWindow(QMainWindow):
         geometry = self.settings.value("window/geometry")
         if geometry is not None:
             self.restoreGeometry(geometry)
-
-        # maximized
-        if self.settings.value("window/maximized", False, bool):
+            # maximized (тільки якщо є збережена geometry)
+            if self.settings.value("window/maximized", False, bool):
+                self.showMaximized()
+        else:
+            # Якщо немає збереженого стану, відкриваємо на весь екран
             self.showMaximized()
 
         # ui state
