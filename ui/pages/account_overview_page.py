@@ -121,6 +121,12 @@ class AccountOverviewPage(BasePage):
         """)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.setSelectionBehavior(QTableWidget.SelectRows)
+        
+        # Налаштування для автоматичного розміру
+        table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        table.verticalHeader().setVisible(False)  # Приховуємо номери рядків
+        
         return table
 
     def _load_account(self):
@@ -209,7 +215,10 @@ class AccountOverviewPage(BasePage):
                 if float(b['free']) > 0 or float(b['locked']) > 0
             ]
             
-            self._populate_table(self.spot_table, balances, client)
+            # Обмежуємо до перших 10 балансів, відсортованих за вартістю
+            top_balances = self._get_top_balances(balances, client, limit=10)
+            
+            self._populate_table(self.spot_table, top_balances, client)
         except Exception as e:
             self.spot_table.setRowCount(0)
             print(f"Помилка завантаження спот балансів: {e}")
@@ -233,7 +242,10 @@ class AccountOverviewPage(BasePage):
                 if float(a.get('walletBalance', 0)) > 0
             ]
             
-            self._populate_table(self.futures_table, balances, client)
+            # Обмежуємо до перших 10 балансів, відсортованих за вартістю
+            top_balances = self._get_top_balances(balances, client, limit=10)
+            
+            self._populate_table(self.futures_table, top_balances, client)
         except Exception as e:
             self.futures_table.setRowCount(0)
             print(f"Помилка завантаження ф'ючерсних балансів: {e}")
@@ -257,7 +269,10 @@ class AccountOverviewPage(BasePage):
                 if float(a.get('netAsset', 0)) > 0
             ]
             
-            self._populate_table(self.margin_table, balances, client)
+            # Обмежуємо до перших 10 балансів, відсортованих за вартістю
+            top_balances = self._get_top_balances(balances, client, limit=10)
+            
+            self._populate_table(self.margin_table, top_balances, client)
         except Exception as e:
             self.margin_table.setRowCount(0)
             print(f"Помилка завантаження маржинальних балансів: {e}")
@@ -285,6 +300,60 @@ class AccountOverviewPage(BasePage):
                 pass
         
         return asset
+
+    def _get_top_balances(self, balances: list, client, limit: int = 10) -> list:
+        """Повертає топ-N балансів, відсортованих за вартістю в USDT.
+        Якщо балансів 10 або менше - повертає всі."""
+        if not client or not balances:
+            return balances
+        
+        # Якщо балансів 10 або менше - повертаємо всі
+        if len(balances) <= limit:
+            # Все одно сортуємо за вартістю для кращого відображення
+            balances_with_value = []
+            for balance in balances:
+                asset = balance.get('asset', '')
+                free = float(balance.get('free', 0))
+                locked = float(balance.get('locked', 0))
+                total = float(balance.get('total', free + locked))
+                
+                # Отримуємо ціну в USDT
+                price_usdt = self._get_asset_price_usdt(asset, client)
+                value_usdt = total * price_usdt
+                
+                balances_with_value.append({
+                    'balance': balance,
+                    'value_usdt': value_usdt
+                })
+            
+            # Сортуємо за вартістю (від більшого до меншого)
+            balances_with_value.sort(key=lambda x: x['value_usdt'], reverse=True)
+            return [item['balance'] for item in balances_with_value]
+        
+        # Якщо балансів більше 10 - обмежуємо до топ-10
+        # Обчислюємо вартість для кожного балансу
+        balances_with_value = []
+        for balance in balances:
+            asset = balance.get('asset', '')
+            free = float(balance.get('free', 0))
+            locked = float(balance.get('locked', 0))
+            total = float(balance.get('total', free + locked))
+            
+            # Отримуємо ціну в USDT
+            price_usdt = self._get_asset_price_usdt(asset, client)
+            value_usdt = total * price_usdt
+            
+            balances_with_value.append({
+                'balance': balance,
+                'value_usdt': value_usdt
+            })
+        
+        # Сортуємо за вартістю (від більшого до меншого)
+        balances_with_value.sort(key=lambda x: x['value_usdt'], reverse=True)
+        
+        # Повертаємо топ-N балансів
+        top_balances = [item['balance'] for item in balances_with_value[:limit]]
+        return top_balances
 
     def _populate_table(self, table: QTableWidget, balances: list, client=None):
         """Заповнення таблиці балансами"""
@@ -345,6 +414,29 @@ class AccountOverviewPage(BasePage):
         
         # Сортуємо за активом
         table.sortItems(0, Qt.AscendingOrder)
+        
+        # Якщо рядків 10 або менше - налаштовуємо таблицю для відображення всіх рядків без прокрутки
+        if len(balances) <= 10:
+            table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            # Встановлюємо висоту таблиці на основі кількості рядків
+            # Отримуємо висоту заголовка
+            header_height = table.horizontalHeader().height()
+            # Отримуємо висоту одного рядка (якщо є рядки)
+            if table.rowCount() > 0:
+                # Встановлюємо оптимальну висоту рядків
+                table.resizeRowsToContents()
+                row_height = table.rowHeight(0) if table.rowCount() > 0 else 30
+            else:
+                row_height = 30
+            
+            # Обчислюємо загальну висоту
+            total_height = header_height + (row_height * len(balances))
+            table.setMinimumHeight(total_height)
+            table.setMaximumHeight(total_height)
+        else:
+            table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            table.setMinimumHeight(0)
+            table.setMaximumHeight(16777215)  # QWIDGETSIZE_MAX
 
     def _get_asset_price_usdt(self, asset: str, client) -> float:
         """Отримує поточну ціну активу в USDT"""
