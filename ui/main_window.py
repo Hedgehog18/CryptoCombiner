@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QStackedWidget,
 )
-from PySide6.QtCore import QSettings, Qt
+from PySide6.QtCore import QSettings
 
 from ui.sidebar import Sidebar
 from ui.pages.dashboard import DashboardPage
