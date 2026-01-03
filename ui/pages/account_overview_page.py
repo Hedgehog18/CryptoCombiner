@@ -99,8 +99,8 @@ class AccountOverviewPage(BasePage):
     def _create_balances_table(self) -> QTableWidget:
         """Створює таблицю для відображення балансів"""
         table = QTableWidget()
-        table.setColumnCount(4)
-        table.setHorizontalHeaderLabels(["Актив", "Доступно", "В обробці", "Загалом"])
+        table.setColumnCount(5)
+        table.setHorizontalHeaderLabels(["Актив", "Доступно", "В обробці", "Загалом", "Вартість в USDT"])
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         table.setAlternatingRowColors(True)
         table.setStyleSheet("""
@@ -163,6 +163,9 @@ class AccountOverviewPage(BasePage):
             client = Client(api_key, secret_key)
             self.binance_client = client
 
+            # Зберігаємо клієнт для використання в _populate_table
+            self.binance_client = client
+            
             # Завантажуємо баланси з різних типів
             self._load_spot_balances(client)
             self._load_futures_balances(client)
@@ -206,7 +209,7 @@ class AccountOverviewPage(BasePage):
                 if float(b['free']) > 0 or float(b['locked']) > 0
             ]
             
-            self._populate_table(self.spot_table, balances)
+            self._populate_table(self.spot_table, balances, client)
         except Exception as e:
             self.spot_table.setRowCount(0)
             print(f"Помилка завантаження спот балансів: {e}")
@@ -230,7 +233,7 @@ class AccountOverviewPage(BasePage):
                 if float(a.get('walletBalance', 0)) > 0
             ]
             
-            self._populate_table(self.futures_table, balances)
+            self._populate_table(self.futures_table, balances, client)
         except Exception as e:
             self.futures_table.setRowCount(0)
             print(f"Помилка завантаження ф'ючерсних балансів: {e}")
@@ -254,7 +257,7 @@ class AccountOverviewPage(BasePage):
                 if float(a.get('netAsset', 0)) > 0
             ]
             
-            self._populate_table(self.margin_table, balances)
+            self._populate_table(self.margin_table, balances, client)
         except Exception as e:
             self.margin_table.setRowCount(0)
             print(f"Помилка завантаження маржинальних балансів: {e}")
@@ -283,9 +286,13 @@ class AccountOverviewPage(BasePage):
         
         return asset
 
-    def _populate_table(self, table: QTableWidget, balances: list):
+    def _populate_table(self, table: QTableWidget, balances: list, client=None):
         """Заповнення таблиці балансами"""
         table.setRowCount(len(balances))
+        
+        # Використовуємо збережений клієнт, якщо не передано
+        if client is None:
+            client = self.binance_client
         
         for row, balance in enumerate(balances):
             asset = balance.get('asset', '')
@@ -316,9 +323,67 @@ class AccountOverviewPage(BasePage):
             total_item = QTableWidgetItem(f"{total:.8f}".rstrip('0').rstrip('.'))
             total_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             table.setItem(row, 3, total_item)
+            
+            # Вартість в USDT
+            if client:
+                price_usdt = self._get_asset_price_usdt(asset, client)
+                value_usdt = total * price_usdt
+                if value_usdt > 0:
+                    if value_usdt < 0.01:
+                        value_text = f"{value_usdt:.6f}".rstrip('0').rstrip('.')
+                    elif value_usdt < 1:
+                        value_text = f"{value_usdt:.4f}".rstrip('0').rstrip('.')
+                    else:
+                        value_text = f"{value_usdt:,.2f}".rstrip('0').rstrip('.')
+                    value_item = QTableWidgetItem(value_text)
+                else:
+                    value_item = QTableWidgetItem("—")
+            else:
+                value_item = QTableWidgetItem("—")
+            value_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            table.setItem(row, 4, value_item)
         
         # Сортуємо за активом
         table.sortItems(0, Qt.AscendingOrder)
+
+    def _get_asset_price_usdt(self, asset: str, client) -> float:
+        """Отримує поточну ціну активу в USDT"""
+        try:
+            # Конвертуємо технічну назву в зрозумілу для пошуку пари
+            human_readable = self._get_human_readable_asset_name(asset)
+            
+            # Для USDT повертаємо 1.0
+            if human_readable.upper() == "USDT":
+                return 1.0
+            
+            # Спробуємо знайти пару з USDT
+            symbol = f"{human_readable}USDT"
+            ticker = client.get_symbol_ticker(symbol=symbol)
+            return float(ticker['price'])
+        except Exception as e:
+            # Якщо не знайдено пару USDT, спробуємо через BUSD або BTC
+            try:
+                # Спробуємо BUSD
+                symbol = f"{human_readable}BUSD"
+                ticker = client.get_symbol_ticker(symbol=symbol)
+                price_busd = float(ticker['price'])
+                # Конвертуємо BUSD в USDT (зазвичай 1:1)
+                return price_busd
+            except:
+                try:
+                    # Спробуємо через BTC
+                    symbol_btc = f"{human_readable}BTC"
+                    ticker_btc = client.get_symbol_ticker(symbol=symbol_btc)
+                    price_btc = float(ticker_btc['price'])
+                    
+                    # Отримуємо ціну BTC в USDT
+                    btc_usdt = client.get_symbol_ticker(symbol="BTCUSDT")
+                    btc_price = float(btc_usdt['price'])
+                    
+                    return price_btc * btc_price
+                except:
+                    # Якщо не вдалося отримати ціну, повертаємо 0
+                    return 0.0
 
     def _load_exchange_icon(self, exchange_name: str) -> QPixmap:
         """Завантажує іконку біржі"""
