@@ -57,6 +57,9 @@ class MainWindow(QMainWindow):
         self.tabsbar = self.sidebar.create_top_tabs()
         self.tabsbar.setObjectName("tabsbar")
         right_layout.addWidget(self.tabsbar)
+        
+        # Ініціалізуємо вкладки для початкового розділу
+        self.sidebar.update_tabs_for_section("Огляд")
 
         # ===== STACK =====
         self.section_stack = QStackedWidget()
@@ -71,14 +74,19 @@ class MainWindow(QMainWindow):
         self.trade_pages.addWidget(DashboardPage("Trade: вкладка 1"))
         self.trade_pages.addWidget(DashboardPage("Trade: вкладка 2"))
 
-        self.section_stack.addWidget(self.overview_pages)  # index 0
-        self.section_stack.addWidget(self.trade_pages)     # index 1
+        self.settings_pages = QStackedWidget()
+        self.settings_pages.addWidget(DashboardPage("Налаштування: Акаунт"))
+
+        self.section_stack.addWidget(self.overview_pages)    # index 0
+        self.section_stack.addWidget(self.trade_pages)      # index 1
+        self.section_stack.addWidget(self.settings_pages)   # index 2
 
         # ===== STATE =====
         self.current_section = "Огляд"
         self.last_tab_index = {
             "Огляд": 0,
             "Trade": 0,
+            "Налаштування": 0,
         }
 
         # ===== SIGNALS =====
@@ -96,6 +104,8 @@ class MainWindow(QMainWindow):
             self.overview_pages.setCurrentIndex(index)
         elif self.current_section == "Trade":
             self.trade_pages.setCurrentIndex(index)
+        elif self.current_section == "Налаштування":
+            self.settings_pages.setCurrentIndex(index)
 
     def on_section_changed(self, section: str):
         self.current_section = section
@@ -104,6 +114,11 @@ class MainWindow(QMainWindow):
             self.section_stack.setCurrentIndex(0)
         elif section == "Trade":
             self.section_stack.setCurrentIndex(1)
+        elif section == "Налаштування":
+            self.section_stack.setCurrentIndex(2)
+
+        # Оновлюємо вкладки для поточного розділу
+        self.sidebar.update_tabs_for_section(section)
 
         self.restore_tab_for_section(section)
 
@@ -117,6 +132,8 @@ class MainWindow(QMainWindow):
             self.overview_pages.setCurrentIndex(index)
         elif section == "Trade":
             self.trade_pages.setCurrentIndex(index)
+        elif section == "Налаштування":
+            self.settings_pages.setCurrentIndex(index)
 
     # ------------------------------------------------------------------
     # PERSISTENCE
@@ -145,6 +162,9 @@ class MainWindow(QMainWindow):
         self.last_tab_index["Trade"] = int(
             self.settings.value("ui/trade_tab", 0)
         )
+        self.last_tab_index["Налаштування"] = int(
+            self.settings.value("ui/settings_tab", 0)
+        )
 
         self.on_section_changed(self.current_section)
 
@@ -157,5 +177,6 @@ class MainWindow(QMainWindow):
         self.settings.setValue("ui/current_section", self.current_section)
         self.settings.setValue("ui/overview_tab", self.last_tab_index["Огляд"])
         self.settings.setValue("ui/trade_tab", self.last_tab_index["Trade"])
+        self.settings.setValue("ui/settings_tab", self.last_tab_index["Налаштування"])
 
         super().closeEvent(event)
